@@ -1,48 +1,39 @@
-import pandas as pd
 import pickle
-
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import GradientBoostingClassifier
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
 
 print("Loading dataset...")
 
-# Load dataset (User must place Churn_Modelling.csv in this folder)
-data = pd.read_csv("Churn_Modelling.csv")
+plots = []
+genres = []
 
-# Drop unnecessary columns if present
-drop_cols = ["RowNumber","CustomerId","Surname"]
-for col in drop_cols:
-    if col in data.columns:
-        data = data.drop(col, axis=1)
+with open("train_data.txt", encoding="utf-8") as f:
+    for line in f:
+        parts = line.strip().split(":::")
 
-# Encode categorical columns
-for col in data.columns:
-    if data[col].dtype == "object":
-        le = LabelEncoder()
-        data[col] = le.fit_transform(data[col].astype(str))
+        if len(parts) >= 4:
+            genre = parts[2].strip()
+            plot = parts[3].strip()
 
-# Target column (usually Exited = churn)
-target = "Exited"
+            plots.append(plot)
+            genres.append(genre)
 
-X = data.drop(target, axis=1)
-y = data[target]
+df = pd.DataFrame({"plot": plots, "genre": genres})
 
-# Split
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
+print("Samples:", len(df))
+print("Genres count:")
+print(df["genre"].value_counts().head(10))
+
+# TF-IDF
+vectorizer = TfidfVectorizer(stop_words="english", max_features=50000)
+X_vec = vectorizer.fit_transform(df["plot"])
 
 print("Training model...")
+model = MultinomialNB()
+model.fit(X_vec, df["genre"])
 
-# Gradient Boosting (strong for churn prediction)
-model = GradientBoostingClassifier()
-model.fit(X_train, y_train)
-
-accuracy = model.score(X_test, y_test)
-print("Accuracy:", accuracy)
-
-# Save model
 pickle.dump(model, open("model.pkl","wb"))
+pickle.dump(vectorizer, open("vectorizer.pkl","wb"))
 
-print("Model trained and saved successfully")
+print("✅ Model trained correctly")
